@@ -384,4 +384,3 @@ class Command(BaseCommand):
                 home = driver.find_element_by_xpath(
                     '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
 
-
