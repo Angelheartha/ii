@@ -29,6 +29,7 @@ from selenium.webdriver.support.select import Select
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from datetime import datetime
+from bidittemdb.models import Project, AttachedFile, Bidder, Prefecture, City, BidResult
 
 
 def read_result(soup, item):
@@ -40,183 +41,64 @@ def read_result(soup, item):
         titles = td.find_all('td', class_='FieldLabel')
         for title in titles:
             title = title.get_text()
+            # print(title)
 
         values = td.find_all('td', class_='FieldData')
         for value in values:
-            value = value.get_text()  # class=TableTitleのtdの隣のtd
+            value = value.get_text()
+            # print(value)
 
-        if value == '' or value.startswith('*'):  # データが空白の場合と"*"から始まる場合、次の行に移る
-            continue
+        # value = ""
+        # for value in values:
+        # value = value.get_text()
+        # if value=='' or value.startswith('*'):
+        #   continue
+        # print(value)
 
-        if title == '入札方式':
-            if '一般競争入札' in value:
-                item[BID_FORMAT_TYPE] = 0
-            elif '指名競争入札' in value:
-                item[BID_FORMAT_TYPE] = 1
-            elif '公募' in value or 'プロポーザル' in value:
-                item[BID_FORMAT_TYPE] = 2
-            elif '随意契約' in value:
-                item[BID_FORMAT_TYPE] = 3
-        elif title == '案件名称':
+        if title == '案件名称':
             item[NAME] = value
         elif title == '案件番号':
             item[SERIAL_NO] = value
-        elif title == '調達区分':  # 業務区分=工事等の場合のみ
-            if value == '建設工事':
-                item[CATEGORY_TYPE] = 0  # 工事
-            elif value == '設計・調査・測量':
-                item[CATEGORY_TYPE] = 1  # コンサル
-            elif value == '土木施設維持管理':
-                item[CATEGORY_TYPE] = 3  # 委託
-            item[SECTOR] = value
-        elif title == '業種／業務' or title == '業種及び格付':
-            if item[SECTOR] is None:
-                item[SECTOR] = value
-            else:
-                item[SECTOR] = item[SECTOR] + '/' + value
-        elif title == '案件場所' or title == '納入場所':
-            item[PLACE] = re.sub(r"\s", "", value)  # 空白・改行を削除
-        elif title == '案件概要':  # 発注情報のみ
-            item[DESCRIPTION] = re.sub(r"\s", "", value)  # 空白・改行を削除
-        elif title == '備考':  # 発注情報・業務区分=物品の時のみ
-            item[ETC] = re.sub(r"\s", "", value)  # 空白・改行を削除
-        elif title == '公開日':  # 発注情報のみ
-            date_dt = make_aware(datetime.strptime(value.split()[0], '%Y/%m/%d'))
-            item[RELEASE_DATE] = date_dt
-        elif title == '開札日':
-            date_dt = make_aware(datetime.strptime(value.split()[0], '%Y/%m/%d'))
-            item[OPENING_DATE] = date_dt
-        elif '予定価格' in title:
-            if item[ESTIMATED_PRICE] is None:  # カンマを除去してintに変換
-                pass
-            else:
-                item[ESTIMATED_PRICE] = int(value.replace(',', ''))
-        elif '設計額' in title:
-            if item[ESTIMATED_PRICE] is None:
-                item[ESTIMATED_PRICE] = int(value.replace(',', ''))
-        elif title == '課所名':
+        elif title == '発注者':
+            item[NAME] = value
+        elif title == '入札結果':
+            item[RESULT_CHOICES] = value
+            if '落札失敗' in value:
+                item[RESULT_CHOICES] = 0
+            elif '落札' in value:
+                item[RESULT_CHOICES] = 1
+            elif '辞退' in value:
+                item[RESULT_CHOICES] = 2
+
+        elif title == '結果登録日':
+            item[CREATED_ON] = value
+        elif title == '落札金額（※）':
+            item[CONTRACT_PRICE] = value
+        elif title == '落札業者名':
+            item[NAME] = value
+        elif title == '落札業者住所':
             departments = value.split()  # 空白でvalueを区切る
             if departments[0].endswith('県'):  # 最初の区切りに"県"が含まれる場合
                 item[CITY] = None
             else:
                 item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
+                department = ""
+                for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
+                    department = department + departments[i]
+                    item[DEPARTMENT] = department
+        elif title == '工事場所':
+            item[PLACE] = value
+        elif title == '工期':
+            item[DELETED_AT] = value
+        elif '予定価格（※）' in title:
+            item[ESTIMATED_PRICE] = int(value.replace(',', ''))
+            if item[ESTIMATED_PRICE] is None:
+                item[ESTIMATED_PRICE] = int(value.replace(',', ''))
+        elif title == '最低制限価格（※）':
+            item[PRICE] = value
 
-            department = ""
-            for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
-                department = department + departments[i]
-            item[DEPARTMENT] = department
-
-        elif title.startswith('結果図書ファイル') or title.startswith('入札公告等ファイル') or title.startswith('発注図書ファイル'):
-            if value != None:
-                attached_file = {}
-                # 添付ファイル名
-                attached_file[NAME] = value
-                # 添付ファイルパス(リンクの代わりにxpathを記録:2022/2/2現在)
-                if title.startswith('発注図書ファイル'):
-                    id = re.sub(r"\D", "", title)  # titleから数値のみを取り出す
-                    attached_file[PATH] = '/html/body/form/div[3]/table[4]/tbody/tr[' + str(id) + ']/td[2]/a'
-                else:
-                    id = td.next_sibling.find('a').get('id')  # XPATHをidで指定する
-                    attached_file[PATH] = '//*[@id="' + id + '"]'
-
-                item[ATTACHED_FILE].append(attached_file)
-
-
-def read_bid_result(soup, item):
-    # 入札結果テーブルに関する定数
-    col_seriol_no = 0  # 業者番号・法人番号の列数
-    col_result = 2  # 結果の左端列数
-
-    # 入札結果のtableを探す
-    # class='TableTitle'のthが含まれるtableを取得
-    th = soup.find_all('table', class_='Sheet')
-    if th == None:  # テーブルがない場合（入札結果がない場合)
-        return
-
-    table = th.parent.parent
-    rows = table.find_all('tr')  # 1行ごとのデータに分解
-    number_of_rows = len(rows)
-    # 表の見出し(1行目)を取得
-    bid_result_header = [c.get_text().strip() for c in rows[0].find_all('th')]
-    max_col = len(bid_result_header)
-    # 入札回数の最大値を取得 (表の'金額'の個数)
-    max_bit_count = len(rows[1].find_all('th'))
-
-    # 入札回数のデータを得る(3列目～)
-    # '随意契約'などを無視できるようになれば必要なし
-    bid_count_header = []
-    for col in range(col_result, col_result + max_bit_count):
-        th_item = bid_result_header[col]
-        if (str.isdigit(th_item[1]) or th_item == '最終回'):
-            bid_count_header.append(col - 1)
-        else:
-            bid_count_header.append(0)
-
-    # 1行ずつデータを取得
-    # 見出し(th)2行が先頭にあるため、3行目のデータから読み込み開始
-    for line in range(2, number_of_rows):
-        bid_result = dict.fromkeys([  # 入札結果用配列=Noneで初期化
-            BIDDER,
-            PRICE,
-            BID_COUNT,
-            RESULT_TYPE,
-            SERIAL_NO,
-            REPRESENTATIVE,
-            MAIL,
-            PASSWORD
-        ])
-        bid_result[RESULT_TYPE] = 0  # 入札結果を「入札失敗」で初期化
-        tds = rows[line].find_all('td')
-
-        # 業者名を取得(2列目)
-        value = tds[col_bidder].get_text().strip()
-        if value == '' or value.startswith('**'):  # 業者名が空白、または'**'で始まる場合、行ごとスキップ
-            continue
-        else:
-            bid_result[BIDDER] = re.sub(r"\s", "", value)  # 空白・改行を削除
-            # 業者名にfont(color)が設定されていたら落札成功
-            if tds[1].find('font') != None:
-                bid_result[RESULT_TYPE] = 1
-
-        # 業者番号・法人番号などを取得(1列目)
-        value = tds[col_seriol_no].get_text().strip()
-        if value != '' and not (value.startswith('**')):
-            bid_result[SERIAL_NO] = int(value)
-
-        # 表の右端のデータを取得、'辞退'・'抜け'の文字が含まれていたら辞退
-        value = tds[max_col - 1].get_text().strip()
-        if '辞退' in value or '抜け' in value:
-            bid_result['result_type'] = 2
-
-            # 金額を取得(1回目=3列目・必ずbid_resultを登録)
-        value = tds[col_result].get_text().strip().replace(',', '')  # カンマを除去
-        bid_result[BID_COUNT] = 1
-        if str.isdigit(value):
-            bid_result[PRICE] = int(value)
-        else:
-            bid_result[PRICE] = None  # priceにNoneが入るのは1回目の時のみ
-
-        # 2回目以降の金額を取得
-        for col in range(1, max_bit_count):
-            value = tds[col_result + col].get_text().strip().replace(',', '')  # カンマを除去
-            if str.isdigit(value):  # priceが数値の場合のみbid_resultを登録する
-                if bid_result[PRICE] != None:  # 前回の金額がNoneではない場合
-                    # 前回のbid_resultを落札失敗にする
-                    temp_result_type = bid_result[RESULT_TYPE]
-                    bid_result[RESULT_TYPE] = 0
-                    # 前回のデータを登録
-                    item[BID_RESULT].append(copy.deepcopy(bid_result))
-                    # bid_resultを元に戻す
-                    bid_result[RESULT_TYPE] = temp_result_type
-
-                # 回数を上書き
-                bid_result[BID_COUNT] = bid_count_header[col]
-                # 価格を上書き
-                bid_result[PRICE] = int(value)
-            else:
-                continue
-
-        item[BID_RESULT].append(copy.deepcopy(bid_result))
+        # else:   #フォーマット決定後は削除
+        #       item[title]=val
 
 
 class Command(BaseCommand):
@@ -295,6 +177,9 @@ class Command(BaseCommand):
                 PLACE,
                 DESCRIPTION,
                 ETC,
+                RESULT_CHOICES,
+                CREATED_ON,
+                DELETED_AT,
                 RELEASE_DATE,
                 ORIENTATION_DATE,
                 ENTRY_FROM,
@@ -309,11 +194,12 @@ class Command(BaseCommand):
                 CONTRACT_FROM,
                 CONTRACT_TO,
                 CITY,
-                DEPARTMENT
+                DEPARTMENT,
             ])
             item[SERIAL_NO] = 0  # 番号(デフォルト)
             item[NAME] = []
             alll = []
+            print(item)
 
             driver.switch_to.default_content()
             driver.switch_to_frame("ppimain")
@@ -369,7 +255,7 @@ class Command(BaseCommand):
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
                 [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                 read_result(soup, item)
-                read_bid_result(soup, item)
+                # read_bid_result(soup, item)
 
                 # [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                 # read_result(soup, item)
