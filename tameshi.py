@@ -48,54 +48,56 @@ def read_result(soup, item):
             value = value.get_text()
             # print(value)
 
-        # value = ""
-        # for value in values:
-        # value = value.get_text()
-        # if value=='' or value.startswith('*'):
-        #   continue
-        # print(value)
+            # value = ""
+            # for value in values:
+            # value = value.get_text()
+            # if value=='' or value.startswith('*'):
+            #   continue
+            # print(value)
 
-        if title == '案件名称':
-            item[NAME] = value
-        elif title == '案件番号':
-            item[SERIAL_NO] = value
-        elif title == '発注者':
-            item[NAME] = value
-        elif title == '入札結果':
-            item[RESULT_CHOICES] = value
-            if '落札失敗' in value:
-                item[RESULT_CHOICES] = 0
-            elif '落札' in value:
-                item[RESULT_CHOICES] = 1
-            elif '辞退' in value:
-                item[RESULT_CHOICES] = 2
-
-        elif title == '結果登録日':
-            item[CREATED_ON] = value
-        elif title == '落札金額（※）':
-            item[CONTRACT_PRICE] = value
-        elif title == '落札業者名':
-            item[NAME] = value
-        elif title == '落札業者住所':
-            departments = value.split()  # 空白でvalueを区切る
-            if departments[0].endswith('県'):  # 最初の区切りに"県"が含まれる場合
-                item[CITY] = None
-            else:
-                item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
-                department = ""
-                for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
-                    department = department + departments[i]
-                    item[DEPARTMENT] = department
-        elif title == '工事場所':
-            item[PLACE] = value
-        elif title == '工期':
-            item[DELETED_AT] = value
-        elif '予定価格（※）' in title:
-            item[ESTIMATED_PRICE] = int(value.replace(',', ''))
-            if item[ESTIMATED_PRICE] is None:
-                item[ESTIMATED_PRICE] = int(value.replace(',', ''))
-        elif title == '最低制限価格（※）':
-            item[PRICE] = value
+            if title == '案件名称':
+                item[NAME] = value
+            elif title == '案件番号':
+                item[SERIAL_NO] = value
+            elif title == '発注者':
+                item[NAME] = value
+            elif title == '入札結果':
+                item[RESULT_CHOICES] = value
+                if '落札失敗' in value:
+                    item[RESULT_CHOICES] = 0
+                elif '落札' in value:
+                    item[RESULT_CHOICES] = 1
+                elif '辞退' in value:
+                    item[RESULT_CHOICES] = 2
+            elif title == '結果登録日':
+                item[CREATED_ON] = value
+            elif title == '落札金額（※）':
+                item[CONTRACT_PRICE] = value
+            elif title == '落札業者名':
+                item[NAME] = value
+            elif title == '落札業者住所':
+                departments = value.split()  # 空白でvalueを区切る
+                if departments[0].endswith('県'):  # 最初の区切りに"県"が含まれる場合
+                    item[CITY] = None
+                else:
+                    item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
+                    department = ""
+                    for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
+                        department = department + departments[i]
+                        item[DEPARTMENT] = department
+            elif title == '工事場所':
+                item[PLACE] = value
+            # elif title == '工期':
+            #  item[DELETED_AT] =value[9]
+            # elif title =='予定価格（※）':
+            #   item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
+            #   if item[ESTIMATED_PRICE] is None:
+            #      item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
+            # if title == '最低制限価格（※）':
+            #   try:
+            #      item[PRICE] =value[11]
+            #   except NoSuchElementException:
+            #      pass
 
         # else:   #フォーマット決定後は削除
         #       item[title]=val
@@ -170,31 +172,17 @@ class Command(BaseCommand):
             item = dict.fromkeys([  # 結果格納用配列=Noneで初期化
                 NAME,
                 SERIAL_NO,
-                BID_METHOD_TYPE,
-                BID_FORMAT_TYPE,
-                CATEGORY_TYPE,
-                SECTOR,
-                PLACE,
-                DESCRIPTION,
-                ETC,
+                NAME,
                 RESULT_CHOICES,
                 CREATED_ON,
-                DELETED_AT,
-                RELEASE_DATE,
-                ORIENTATION_DATE,
-                ENTRY_FROM,
-                ENTRY_TO,
-                SUBMIT_FROM,
-                SUBMIT_TO,
-                OPENING_DATE,
-                ESTIMATED_PRICE,
-                CRWAL_URL,
-                CONTRACT_DATE,
                 CONTRACT_PRICE,
-                CONTRACT_FROM,
-                CONTRACT_TO,
+                NAME,
                 CITY,
                 DEPARTMENT,
+                PLACE,
+                DELETED_AT,
+                ESTIMATED_PRICE,
+                PRICE,
             ])
             item[SERIAL_NO] = 0  # 番号(デフォルト)
             item[NAME] = []
@@ -256,6 +244,7 @@ class Command(BaseCommand):
                 [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                 read_result(soup, item)
                 # read_bid_result(soup, item)
+                print(item)
 
                 # [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                 # read_result(soup, item)
