@@ -226,9 +226,10 @@ class Command(BaseCommand):
                     values = td.find_all('td', class_='FieldData')
                     for value in values:
                         value = value.get_text()
-                        value.append(value)
-                        print(contents)
-                        contents = []
+                        # name.save(value)
+                        contents.append(value)
+                    print(contents)
+                    contents = []
 
                 # html = driver.page_source.encode('utf-8')
                 # soup = BeautifulSoup(html, 'html.parser')
