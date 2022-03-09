@@ -46,57 +46,57 @@ def read_result(soup, item):
         values = td.find_all('td', class_='FieldData')
         for value in values:
             value = value.get_text()
-            print(value)
-        # value = ""
-        # for value in values:
-        # value = value.get_text()
-        # if value=='' or value.startswith('*'):
-        #   continue
-        # print(value)
+            # print(value)
+            # value = ""
+            # for value in values:
+            # value = value.get_text()
+            # if value=='' or value.startswith('*'):
+            #   continue
+            # print(value)
 
-        # if title == '案件名称':
-        #  item[NAME] = value
-        # elif title == '案件番号':
-        #  item[SERIAL_NO] = value
-        # elif title == '発注者':
-        #  item[NAME] = value
-        # elif title == '入札結果':
-        #  item[RESULT_CHOICES] = value
-        #  if '落札失敗' in value:
-        #    item[RESULT_CHOICES]=0
-        #  elif '落札' in value:
-        #    item[RESULT_CHOICES]=1
-        #  elif '辞退' in value:
-        #    item[RESULT_CHOICES]=2
-        # elif title == '結果登録日':
-        #   item[CREATED_ON] = value
-        # elif title == '落札金額（※）':
-        #   item[CONTRACT_PRICE] = value
-        # elif title == '落札業者名':
-        #   item[NAME] =value
-        # elif title == '落札業者住所':
-        #   departments = value.split()  # 空白でvalueを区切る
-        #   if departments[0].endswith('県'):  # 最初の区切りに"県"が含まれる場合
-        #      item[CITY] = None
-        #   else:
-        #      item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
-        #      department = ""
-        #      for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
-        #        department = department + departments[i]
-        #        item[DEPARTMENT] = department
-        # elif title == '工事場所':
-        # item[PLACE] =value
-        # elif title == '工期':
-        #  item[DELETED_AT] =value[9]
-        # elif title =='予定価格（※）':
-        #   item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
-        #   if item[ESTIMATED_PRICE] is None:
-        #      item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
-        # if title == '最低制限価格（※）':
-        #   try:
-        #      item[PRICE] =value[11]
-        #   except NoSuchElementException:
-        #      pass
+            if title == '案件名称':
+                item[NAME] = value
+            elif title == '案件番号':
+                item[SERIAL_NO] = value
+            elif title == '発注者':
+                item[NAME] = value
+            elif title == '入札結果':
+                item[RESULT_CHOICES] = value
+                if '落札失敗' in value:
+                    item[RESULT_CHOICES] = 0
+                elif '落札' in value:
+                    item[RESULT_CHOICES] = 1
+                elif '辞退' in value:
+                    item[RESULT_CHOICES] = 2
+            elif title == '結果登録日':
+                item[CREATED_ON] = value
+            elif title == '落札金額（※）':
+                item[CONTRACT_PRICE] = value
+            elif title == '落札業者名':
+                item[NAME] = value
+            # elif title == '落札業者住所':
+            #    departments = value.split()  # 空白でvalueを区切る
+            ##    if departments[0].endswith('県'):  # 最初の区切りに"県"が含まれる場合
+            #       item[CITY] = None
+            #    else:
+            #      item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
+            #      department = ""
+            #      for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
+            #        department = department + departments[i]
+            #        item[DEPARTMENT] = department
+            # elif title == '工事場所':
+            # item[PLACE] =value
+            # elif title == '工期':
+            #  item[DELETED_AT] =value[9]
+            # elif title =='予定価格（※）':
+            #   item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
+            #   if item[ESTIMATED_PRICE] is None:
+            #      item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
+            # if title == '最低制限価格（※）':
+            #   try:
+            #      item[PRICE] =value[11]
+            #   except NoSuchElementException:
+            #      pass
 
         # else:   #フォーマット決定後は削除
         #       item[title]=val
@@ -219,17 +219,17 @@ class Command(BaseCommand):
 
                 time.sleep(1)
 
-                html = driver.page_source
-                soup = BeautifulSoup(html, 'html.parser')
-                tds = soup.find_all('table', class_='Sheet')
-                for td in tds:
-                    values = td.find_all('td', class_='FieldData')
-                    for value in values:
-                        value = value.get_text()
-                        # name.save(value)
-                        contents.append(value)
-                    print(contents)
-                    contents = []
+                # html = driver.page_source
+                # soup = BeautifulSoup(html, 'html.parser')
+                # tds = soup.find_all('table',class_='Sheet')
+                # for td in tds:
+                #    values=td.find_all('td', class_='FieldData')
+                #    for value in values:
+                #       value = value.get_text()
+                # name.save(value)
+                #       contents.append(value)
+                #    print(contents)
+                #    contents=[]
 
                 # html = driver.page_source.encode('utf-8')
                 # soup = BeautifulSoup(html, 'html.parser')
@@ -241,11 +241,11 @@ class Command(BaseCommand):
                 #        alll.append(tdss)
                 #    print(alll)
 
-                # soup=BeautifulSoup(driver.page_source, 'html.parser')
-                # [tag.extract() for tag in soup(string='\n')]    #余分な改行を消す
-                # read_result(soup, item)
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
+                read_result(soup, item)
                 # read_bid_result(soup, item)
-                # print(item)
+                print(item)
 
                 # [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                 # read_result(soup, item)
@@ -259,5 +259,7 @@ class Command(BaseCommand):
                 time.sleep(1)
                 home = driver.find_element_by_xpath(
                     '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
+
+
 
 
