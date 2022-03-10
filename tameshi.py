@@ -261,5 +261,3 @@ class Command(BaseCommand):
                     '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
 
 
-
-
