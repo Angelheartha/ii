@@ -2,6 +2,7 @@ from pydoc import html
 from unicodedata import name
 import click
 from django.test import tag
+from datetime import datetime
 from importlib_resources import contents
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -12,6 +13,7 @@ import requests
 from selenium.common.exceptions import NoSuchElementException
 import re
 from datetime import datetime
+from django.utils.timezone import make_aware
 from time import sleep
 from bidittemdb.management.commands.config import *
 from bidittemdb.management.commands.crawl_data_save import *
@@ -31,6 +33,7 @@ from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from datetime import datetime
 from bidittemdb.models import Project, AttachedFile, Bidder, Prefecture, City, BidResult
+from bidittemdb.management.commands.crawl_data_save import CrawlData
 
 
 def read_result(soup, item):
@@ -38,63 +41,56 @@ def read_result(soup, item):
     if len(tds) == 0:  # テーブルがない場合（該当する発注情報がない場合
         return
 
-    for td in tds:
-        title = ""
-        titles = td.find_all('td', class_='FieldLabel')
-        for title in titles:
-            title = title.get_text()
-            print(f'title(outside)={title}')
+    td = tds[1]
+    titles = td.find_all('td', class_='FieldLabel')
+    values = td.find_all('td', class_='FieldData')
+    for i in range(0, len(titles)):
+        title = titles[i].get_text()
+        value = values[i].get_text()
         # print(f'title(outside)={title}')
+        # print(f'value={value}')
+        # print(value)
 
-        values = td.find_all('td', class_='FieldData')
-        for value in values:
-            value = value.get_text()
-            print(f'value={value}')
-            # print(value)
-
-            if title == '案件名称':
-                item[NAME].append(value[0])
-            elif title == '案件番号':
-                item[SERIAL_NO].appned(value[1])
-            elif title == '発注者':
-                item[NAME].appned(value[2])
-            elif title == '入札結果':
-                item[RESULT_CHOICES] = value
-                if '落札失敗' in value:
-                    item[RESULT_CHOICES] = 0
-                elif '落札' in value:
-                    item[RESULT_CHOICES] = 1
-                elif '辞退' in value:
-                    item[RESULT_CHOICES] = 2
-            elif title == '結果登録日':
-                item[CREATED_ON] = value
-            elif title == '落札金額（※）':
-                item[CONTRACT_PRICE] = value
-            elif title == '落札業者名':
-                item[NAME] = value
-            elif title == '落札業者住所':
-                departments = value.split()  # 空白でvalueを区切る
-                if departments[0].endswith('県'):  # 最初の区切りに"県"が含まれる場合
-                    item[CITY] = None
-                else:
-                    item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
-                    department = ""
-                    for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
-                        department = department + departments[i]
-                        item[DEPARTMENT] = department
-            elif title == '工事場所':
-                item[PLACE] = value
-            elif title == '工期':
-                item[DELETED_AT] = value
-            # elif title =='予定価格（※）':
-            #   item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
-            #   if item[ESTIMATED_PRICE] is None:
-            #      item[ESTIMATED_PRICE] = int(value[10].replace(',', ''))
-            # if title == '最低制限価格（※）':
-            #   try:
-            #      item[PRICE] =value[11]
-            #   except NoSuchElementException:
-            #      pass
+        if title == '案件名称':
+            item[NAME] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '案件番号':
+            item[SERIAL_NO] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '発注者':
+            item[NAME] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '入札結果':
+            item[BID_RESULT] = value
+        if '落札失敗' in value:
+            item[BID_RESULT] = 0
+        elif '落札' in value:
+            item[BID_RESULT] = 1
+        elif '辞退' in value:
+            item[BID_RESULT] = 2
+        elif title == '結果登録日':
+            date_dt = make_aware(datetime.strptime(value.split()[0], '%Y/%m/%d'))
+            item[CONTRACT_DATE] = date_dt
+        elif title == '落札金額（※）':
+            item[CONTRACT_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '落札業者名':
+            item[NAME] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '落札業者住所':
+            item[CITY] = value.replace("\u3000", "None").replace("\xa0", "None")
+            # if departments[0].endswith('富山県'):  # 最初の区切りに"県"が含まれる場合
+            #    item[CITY] = None
+            #    item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
+            #    department = ""
+            #    for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
+            #      department = department + departments[i]
+            #      item[DEPARTMENT] = department
+        elif title == '工事場所':
+            item[PLACE] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '工期':
+            item[CONTRACT_TO] = value.replace("\u3000", "None").replace("\xa0", "None")
+        elif title == '予定価格（※）':
+            item[ESTIMATED_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
+        if item[ESTIMATED_PRICE] is None:
+            item[ESTIMATED_PRICE] = int(value)
+        if title == '最低制限価格（※）':
+            item[CONTRACT_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
 
         # else:   #フォーマット決定後は削除
         #       item[title]=val
@@ -120,6 +116,7 @@ class Command(BaseCommand):
 
         elems_remark = []
         contents = []
+        sample_data = []
         options = Options()
         options.headless = True
 
@@ -170,20 +167,37 @@ class Command(BaseCommand):
                 item = dict.fromkeys([  # 結果格納用配列=Noneで初期化
                     NAME,
                     SERIAL_NO,
-                    NAME,
-                    RESULT_CHOICES,
-                    CREATED_ON,
+                    BID_METHOD_TYPE,
+                    BID_FORMAT_TYPE,
+                    CATEGORY_TYPE,
+                    SECTOR,
+                    PLACE,
+                    DESCRIPTION,
+                    ETC,
+                    RELEASE_DATE,
+                    ORIENTATION_DATE,
+                    ENTRY_FROM,
+                    ENTRY_TO,
+                    SUBMIT_FROM,
+                    SUBMIT_TO,
+                    OPENING_DATE,
+                    ESTIMATED_PRICE,
+                    CRWAL_URL,
+                    CONTRACT_DATE,
                     CONTRACT_PRICE,
-                    NAME,
+                    CONTRACT_FROM,
+                    CONTRACT_TO,
                     CITY,
                     DEPARTMENT,
-                    PLACE,
-                    DELETED_AT,
-                    ESTIMATED_PRICE,
-                    PRICE,
+                    ATTACHED_FILE,
+                    BID_RESULT,
+
                 ])
-                item[SERIAL_NO] = 0  # 番号(デフォルト)
-                item[NAME] = []
+                item[BID_RESULT] = []  # 番号(デフォルト)
+                item[ATTACHED_FILE] = []
+                item[BID_METHOD_TYPE] = 0
+                item[BID_FORMAT_TYPE] = 0
+                item[CATEGORY_TYPE] = 0
                 alll = []
 
                 driver.switch_to.default_content()
@@ -245,6 +259,9 @@ class Command(BaseCommand):
                     # read_bid_result(soup, item)
                     print(item)
 
+                    print(item, "\n\n")  # 辞書データの出力
+                    sample_data.append(item)
+
                     # [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                     # read_result(soup, item)
                     # read_bid_result(soup, item)
@@ -257,6 +274,13 @@ class Command(BaseCommand):
                     time.sleep(1)
                     home = driver.find_element_by_xpath(
                         '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
+
+            print(sample_data, "\n\n")
+            crawl_date_class = CrawlData()
+            print(crawl_date_class.check_list_data(sample_data))
+
+
+
         finally:
             driver.quit()
 
