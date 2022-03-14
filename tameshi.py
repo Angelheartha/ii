@@ -32,8 +32,10 @@ from selenium.webdriver.support.select import Select
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from datetime import datetime
+from datetime import date
 from bidittemdb.models import Project, AttachedFile, Bidder, Prefecture, City, BidResult
 from bidittemdb.management.commands.crawl_data_save import CrawlData
+from japanera import Japanera, EraDate
 
 
 def read_result(soup, item):
@@ -66,7 +68,7 @@ def read_result(soup, item):
         elif '辞退' in value:
             item[BID_RESULT] = 2
         elif title == '結果登録日':
-            date_dt = make_aware(datetime.strptime(value.split()[0], '%Y/%m/%d'))
+            date_dt = make_aware(era.strptime(value, "%-E%-O年%m月%d日"))
             item[CONTRACT_DATE] = date_dt
         elif title == '落札金額（※）':
             item[CONTRACT_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
@@ -119,6 +121,8 @@ class Command(BaseCommand):
         sample_data = []
         options = Options()
         options.headless = True
+        janera = Japanera()
+        era = janera.era(datetime)
 
         try:
             driver = webdriver.Chrome(options=options)
@@ -260,7 +264,7 @@ class Command(BaseCommand):
                     print(item)
 
                     print(item, "\n\n")  # 辞書データの出力
-                    sample_data.append(item)
+                    #  sample_data.append(item)
 
                     # [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
                     # read_result(soup, item)
@@ -275,11 +279,10 @@ class Command(BaseCommand):
                     home = driver.find_element_by_xpath(
                         '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
 
-            print(sample_data, "\n\n")
-            crawl_date_class = CrawlData()
-            print(crawl_date_class.check_list_data(sample_data))
 
-
+        # print(sample_data, "\n\n")
+        # crawl_date_class = CrawlData()
+        # print(crawl_date_class.check_list_data(sample_data))
 
         finally:
             driver.quit()
