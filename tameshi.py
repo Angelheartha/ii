@@ -68,7 +68,7 @@ def read_result(soup, item):
         elif '辞退' in value:
             item[BID_RESULT] = 2
         elif title == '結果登録日':
-            date_dt = make_aware(era.strptime(value, "%-E%-O年%m月%d日"))
+            date_dt = make_aware(datetime.janera.strptime(value, "%-E%-O年%m月%d日"))
             item[CONTRACT_DATE] = date_dt
         elif title == '落札金額（※）':
             item[CONTRACT_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
@@ -81,7 +81,7 @@ def read_result(soup, item):
             #    item[CITY] = departments[0]  # 最初の区切りに"市町村"が含まれる場合
             #    department = ""
             #    for i in range(1, len(departments)):  # 2つ目の区切り以降の文字を全てつなげる
-            #      department = department + departments[i]
+            #      department = epartment + departments[i]
             #      item[DEPARTMENT] = department
         elif title == '工事場所':
             item[PLACE] = value.replace("\u3000", "None").replace("\xa0", "None")
@@ -121,8 +121,6 @@ class Command(BaseCommand):
         sample_data = []
         options = Options()
         options.headless = True
-        janera = Japanera()
-        era = janera.era(datetime)
 
         try:
             driver = webdriver.Chrome(options=options)
@@ -203,6 +201,7 @@ class Command(BaseCommand):
                 item[BID_FORMAT_TYPE] = 0
                 item[CATEGORY_TYPE] = 0
                 alll = []
+                janera = Japanera()
 
                 driver.switch_to.default_content()
                 driver.switch_to_frame("ppimain")
