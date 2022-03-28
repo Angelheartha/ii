@@ -38,7 +38,7 @@ from bidittemdb.management.commands.crawl_data_save import CrawlData
 from japanera import Japanera, EraDate
 
 
-def read_result(soup, item):
+def read_result(soup, item, self):
     tds = soup.find_all('table', class_='Sheet')
     if len(tds) == 0:  # テーブルがない場合（該当する発注情報がない場合
         return
@@ -67,9 +67,27 @@ def read_result(soup, item):
             item[BID_RESULT] = 1
         elif '辞退' in value:
             item[BID_RESULT] = 2
+
+
         elif title == '結果登録日':
-            date_dt = make_aware(datetime.janera.strptime(value, "%-E%-O年%m月%d日"))
-            item[CONTRACT_DATE] = date_dt
+
+            value = value.replace("令和", "").replace("年", " ").replace("月", " ").replace("日", "")
+            value = list(value.split())
+            value[0] = str(int(value[0]) + 2018)
+            value = "/".join(value)
+            date_dt = make_aware(datetime.strptime(value, '%Y/%m/%d'))
+            item[OPENING_DATE] = date_dt
+
+            # date = contents[10]
+        # date = date.replace("令和","").replace("年"," ").replace("月"," ").replace("日","")
+        # date = list(date.split())
+        # date[0] = str(int(date[0]) + 2018)
+        # date = "-".join(date)
+        # elems_date.append(datetime.strptime(date, "%Y-%m-%d"))
+
+        # if key == CONTRACT_TO:
+        # value = self.change_calendar_to_western(value)
+
         elif title == '落札金額（※）':
             item[CONTRACT_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
         elif title == '落札業者名':
@@ -94,8 +112,91 @@ def read_result(soup, item):
         if title == '最低制限価格（※）':
             item[CONTRACT_PRICE] = value.replace("\u3000", "None").replace("\xa0", "None")
 
-        # else:   #フォーマット決定後は削除
-        #       item[title]=val
+
+def read_bid_result(soup, item, self):
+    tds = soup.find_all('table', class_='Sheet')
+    for i in tds:
+        value = i.find_all('td', class_='ListData')
+        for it in value:
+            values = it.get_text()
+            print(values)
+
+
+def pass_result(soup, item, self):
+    tds = soup.find_all('table', class_='Sheet')
+    for i in tds:
+        value = i.find_all('td', class_='ListData')
+        for it in value:
+            values = it.get_text()
+            print(values)
+
+    # if len(tds) == 0:  # テーブルがない場合（該当する発注情報がない場合
+    #   return
+
+    # titles=td.find_all('td', class_='ListLabel')
+    # values=td.find_all('td', class_='ListData')
+    # for i in range(0, len(titles)):
+    # title = titles[i].get_text()
+    # value = values[i].get_text()
+    # print(title)
+    # print(value)
+
+
+def paser_result(soup, item, self):
+    tds = soup.find_all('table', class_='Sheet')
+    if len(tds) == 0:  # テーブルがない場合（該当する発注情報がない場合
+        return
+
+    td = tds[1]
+    titles = td.find_all('td', class_='FieldLabel')
+    values = td.find_all('td', class_='FieldData')
+    for i in range(0, len(titles)):
+        title = titles[i].get_text()
+        value = values[i].get_text()
+        print(f'title(outside)={title}')
+        print(f'value={value}')
+        print(value)
+
+
+def paser_results(soup, item, self):
+    tds = soup.find_all('table', class_='Sheet')
+    if len(tds) == 0:  # テーブルがない場合（該当する発注情報がない場合
+        return
+
+    td = tds[2]
+    titles = td.find_all('td', class_='FieldLabel')
+    values = td.find_all('td', class_='FieldData')
+    for i in range(0, len(titles)):
+        title = titles[i].get_text()
+        value = values[i].get_text()
+        print(f'title(outside)={title}')
+        print(f'value={value}')
+        print(value)
+
+
+def pass_paster(soup, item, self):
+    tds = soup.find_all('table', class_='Sheet')
+    if len(tds) == 0:  # テーブルがない場合（該当する発注情報がない場合
+        return
+
+    td = tds[1]
+    titles = td.find_all('td', class_='FieldLabel')
+    values = td.find_all('td', class_='FieldData')
+    for i in range(0, len(titles)):
+        title = titles[i].get_text()
+        value = values[i].get_text()
+        print(f'title(outside)={title}')
+        print(f'value={value}')
+        print(value)
+
+
+def pass_pasters(soup, item, self):
+    tds = soup.find_all('table', class_='Sheet')
+    for i in tds:
+        value = i.find_all('td', class_='ListData')
+        for it in value:
+            values = it.get_text()
+            print(values)
 
 
 class Command(BaseCommand):
@@ -201,14 +302,13 @@ class Command(BaseCommand):
                 item[BID_FORMAT_TYPE] = 0
                 item[CATEGORY_TYPE] = 0
                 alll = []
-                janera = Japanera()
 
                 driver.switch_to.default_content()
                 driver.switch_to_frame("ppimain")
                 driver.switch_to_frame("main")
                 time.sleep(2)
 
-                for y in range(5):
+                for y in range(9):
 
                     driver.switch_to.default_content()
                     driver.switch_to_frame("ppimain")
@@ -230,7 +330,7 @@ class Command(BaseCommand):
                     # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[3]/td[1]/a
                     # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[4]/td[1]/a
                     except NoSuchElementException:
-                        break
+                        pass
 
                     time.sleep(1)
 
@@ -258,14 +358,66 @@ class Command(BaseCommand):
 
                     soup = BeautifulSoup(driver.page_source, 'html.parser')
                     [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
-                    read_result(soup, item)
-                    # read_bid_result(soup, item)
-                    print(item)
+                    # read_result(soup, item, self)
+                    read_bid_result(soup, item, self)
 
-                    print(item, "\n\n")  # 辞書データの出力
-                    #  sample_data.append(item)
+                    # print(item, "\n\n") #辞書データの出力
+                    # sample_data.append(item)
 
-                    # [tag.extract() for tag in soup(string='\n')]  # 余分な改行を消す
+                    # この先の実装の仕方考え中。
+
+                    try:
+                        driver.find_element_by_xpath('/html/body/center/form[1]/table[3]/tbody/tr/td[1]/img').click()
+                        # /html/body/center/form[1]/table[3]/tbody/tr/td[1]/img
+                        time.sleep(2)  # /html/body/center/form[1]/table[3]/tbody/tr/td[1]/img
+
+                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                        [tag.extract() for tag in soup(string='\n')]
+                        # pass_result(soup, item, self)
+                        # print(pass_result(soup, item, self))
+
+                        driver.find_element_by_xpath('/html/body/center/form[1]/table[5]/tbody/tr/td/img').click()
+
+                    # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[3]/td[1]/a
+                    # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[4]/td[1]/a
+                    except NoSuchElementException:
+                        pass
+
+                    try:
+                        driver.find_element_by_xpath('/html/body/center/form[1]/table[3]/tbody/tr/td[2]/img').click()
+                        # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[2]/td[1]/a
+                        time.sleep(2)
+                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                        [tag.extract() for tag in soup(string='\n')]
+                        # paser_result(soup, item, self)
+                        # paser_results(soup, item, self)
+
+                        driver.find_element_by_xpath('/html/body/center/form[1]/table[2]/tbody/tr/td/img').click()
+
+                    # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[3]/td[1]/a 調べる
+                    # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[4]/td[1]/a
+                    except NoSuchElementException:
+                        pass
+
+                    try:
+                        driver.find_element_by_xpath('/html/body/center/form[1]/table[3]/tbody/tr/td[3]/img').click()
+                        # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[2]/td[1]/a
+                        time.sleep(2)
+
+                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                        [tag.extract() for tag in soup(string='\n')]
+                        # pass_paster(soup, item, self)
+                        # pass_pasters(soup, item, self)
+
+                        driver.find_element_by_xpath('/html/body/center/form[1]/table[3]/tbody/tr/td/img').click()
+
+                    # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[3]/td[1]/a
+                    # /html/body/center/form[1]/table[2]/tbody/tr[1]/td[1]/table/tbody/tr[4]/td[1]/a
+                    except NoSuchElementException:
+                        pass
+
+                        # [tag.extract() for tag in soup(
+                    # string='\n')]  # 余分な改行を消す
                     # read_result(soup, item)
                     # read_bid_result(soup, item)
                     # print(soup, item)
@@ -275,15 +427,26 @@ class Command(BaseCommand):
                     alll = []
 
                     time.sleep(1)
-                    home = driver.find_element_by_xpath(
-                        '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
+                    try:
+                        home = driver.find_element_by_xpath(
+                            '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
+                    # /html/body/center/form[1]/table[5]/tbody/tr/td/img
+                    # /html/body/center/form[1]/table[4]/tbody/tr/td/img
+                    # /html/body/center/form[1]/table[5]/tbody/tr/td/img
+                    except NoSuchElementException:
+                        homem = driver.find_element_by_xpath(
+                            '/html/body/center/form[1]/table[5]/tbody/tr/td/img').click()
+
+                    except NoSuchElementException:
+                        home = driver.find_element_by_xpath(
+                            '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
+
+            # print(sample_data, "\n\n")
+            #                          /html/body/center/form[1]/table[5]/tbody/tr/td/img
+            # crawl_date_class = CrawlData()/html/body/center/form[1]/table[5]/tbody/tr/td/img
+            # print(crawl_date_class.check_list_data(sample_data))
 
 
-        # print(sample_data, "\n\n")
-        # crawl_date_class = CrawlData()
-        # print(crawl_date_class.check_list_data(sample_data))
 
         finally:
             driver.quit()
-
-
