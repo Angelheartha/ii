@@ -437,9 +437,6 @@ class Command(BaseCommand):
                         homem = driver.find_element_by_xpath(
                             '/html/body/center/form[1]/table[5]/tbody/tr/td/img').click()
 
-                    except NoSuchElementException:
-                        home = driver.find_element_by_xpath(
-                            '/html/body/center/form[1]/table[4]/tbody/tr/td/img').click()
 
             # print(sample_data, "\n\n")
             #                          /html/body/center/form[1]/table[5]/tbody/tr/td/img
